@@ -17,8 +17,7 @@ def main():
    
     # create a temporary directory
     os.system("mkdir -p /jail/usr/local/bin")
-    os.system("cp /usr/local/bin/docer-explorer /jail/usr/local/bin")
-
+    os.system("cp /usr/local/bin/docker-explorer /jail/usr/local/bin")
     os.chroot("/jail")
     completed_process = subprocess.run([command, *args], capture_output=True)
 
