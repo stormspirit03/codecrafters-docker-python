@@ -18,7 +18,7 @@ def main():
     # create a temporary directory
     jail = tempfile.mkdtemp()
     shutil.copy2(command, jail)
-    os.chrrot(jail)
+    os.chroot(jail)
     command = os.path.join(jail,os.path.basename(command))
     print('command',command)
     completed_process = subprocess.run([command, *args], capture_output=True)
