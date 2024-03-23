@@ -16,11 +16,10 @@ def main():
     # create a temporary directory
    
     # create a temporary directory
-    jail = tempfile.mkdtemp()
-    shutil.copy2(command, jail)
-    os.chroot(jail)
-    command = os.path.join(jail,os.path.basename(command))
-    print('command',command)
+    os.system("mkdir -p /jail/usr/local/bin")
+    os.system("cp /usr/local/bin/docer-explorer /jail/usr/local/bin")
+
+    os.chroot("/jail")
     completed_process = subprocess.run([command, *args], capture_output=True)
 
 
