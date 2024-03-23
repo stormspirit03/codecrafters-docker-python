@@ -14,13 +14,14 @@ def main():
     args = sys.argv[4:]
 
     # create a temporary directory
-    with tempfile.TemporaryDirectory() as some_dir:
-        # copy binary to temporary directory 
-        binary_path = '/usr/local/bin/docker-explorer'
-        shutil.copy(binary_path, some_dir)
-        # change the root directory to some_dir
-        os.chroot(some_dir)
-        completed_process = subprocess.run([command, *args], capture_output=True)
+   
+    # create a temporary directory
+    jail = tempfile.mkdtemp()
+    shutil.copy2(command, jail)
+    os.chrrot(jail)
+    command = os.path.join(jail,os.path.basename(command))
+    print('command',command)
+    completed_process = subprocess.run([command, *args], capture_output=True)
 
 
     
