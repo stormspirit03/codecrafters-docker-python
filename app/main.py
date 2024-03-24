@@ -4,6 +4,7 @@ import shutil
 import os
 import sys
 import tempfile
+import ctypes
 
 
 def main():
@@ -20,6 +21,8 @@ def main():
     os.system("cp /usr/local/bin/docker-explorer /jail/usr/local/bin")
     os.system("cp /usr/local/bin/unshare  /jail/usr/local/bin")
     os.chroot("/jail")
+    libc = ctypes.cdll.LoadLibrary("libc.so.6")
+    libc.unshare(0x20000000)
     completed_process = subprocess.run(["unshare","--fork","--pid",command, *args], capture_output=True)
 
 
