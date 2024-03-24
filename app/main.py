@@ -23,7 +23,7 @@ def main():
     os.chroot("/jail")
     libc = ctypes.cdll.LoadLibrary("libc.so.6")
     libc.unshare(0x20000000)
-    completed_process = subprocess.run(["unshare","--fork","--pid",command, *args], capture_output=True)
+    completed_process = subprocess.run([command, *args], capture_output=True)
 
 
     
