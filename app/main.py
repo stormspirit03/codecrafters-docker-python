@@ -19,7 +19,7 @@ def main():
     os.system("mkdir -p /jail/usr/local/bin")
     os.system("cp /usr/local/bin/docker-explorer /jail/usr/local/bin")
     os.chroot("/jail")
-    completed_process = subprocess.run(["usnshare","--fork","--pid",command, *args], capture_output=True)
+    completed_process = subprocess.run(["unshare","--fork","--pid",command, *args], capture_output=True)
 
 
     
