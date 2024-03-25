@@ -6,22 +6,37 @@ import sys
 import tempfile
 import ctypes
 import tarfile
-import requests
+import urllib.request
 
 def get_token():
-    response = requests.get('https://auth.docker.io/token?service=registry.docker.io&scope=repository:library/ubuntu:pull')
-    return response.json()['token']
+    url = 'https://auth.docker.io/token?service=registry.docker.io&scope=repository:library/ubuntu:pull'
+    response = urllib.request.urlopen(url)
+    return response.json()['token'] 
 
 #fetch the image manifest
 def get_manifest(token):
-    headers = {'Authorization': 'Bearer ' + token}
-    response = requests.get('https://registry-1.docker.io/v2/library/ubuntu/manifests/latest', headers=headers)
+    url = 'https://registry-1.docker.io/v2/library/ubuntu/manifests/latest'
+
+    request = urllib.request.urlopen(
+        url,
+        headers={
+            "Accept": "application/vnd.docker.distribution.manifest.v2+json",
+            "Authorization": "Bearer " + token,
+        },
+    )
+    response = urllib.request.urlopen(request)
     return response.json()
 
 def download_and_extract_layers(manifest, token):
-    headers = {'Authorization': 'Bearer ' + token}
+    headers={
+                "Accept": "application/vnd.docker.distribution.manifest.v2+json",
+                "Authorization": "Bearer " + token,
+            }
     for layer in manifest['layers']:
-        response = requests.get('https://registry-1.docker.io/v2/library/ubuntu/blobs/' + layer['digest'], headers=headers, stream=True)
+        url = 'https://registry-1.docker.io/v2/library/ubuntu/blobs/' + layer['digest']
+        requset = urllib.request.Request(url, headers=headers)
+        response = urllib.request.urlopen(requset)
+
         with open('/jail/layer.tar', 'wb') as f:
             for chunk in response.iter_content(chunk_size=8192):
                 f.write(chunk)
