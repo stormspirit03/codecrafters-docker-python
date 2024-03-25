@@ -1,82 +1,103 @@
-import subprocess
-import sys
-import shutil
-import os
-import sys
-import tempfile
-import ctypes
-import tarfile
-import urllib.request
 import json
+import tarfile
+import platform
+import urllib.request
+from typing import Tuple
+import shutil
+import ctypes
+import sys
+import os
+import subprocess
 
+def get_os_name_and_arch() -> Tuple[str, str]:
+    os_name = platform.system().lower()
+    arch = platform.machine()
+    if arch == "x86_64":
+        arch = "amd64"
+    if os_name == "darwin":
+        os_name = "linux"
+    return os_name, arch
 
-def get_token():
-    url = 'https://auth.docker.io/token?service=registry.docker.io&scope=repository:library/ubuntu:pull'
-    response = urllib.request.urlopen(url)
-    token = json.loads(response.read().decode())['token']
-    return token
+def get_headers(token: str) -> dict:
+    return {
+        "Accept": "application/vnd.docker.distribution.manifest.v2+json",
 
-def get_manifest(token):
-    url = 'https://registry-1.docker.io/v2/library/ubuntu/manifests/latest'
+        "Authorization": f"Bearer {token}",
+    }
+
+def get_token(image_name: str) -> str:
+    url = f"https://auth.docker.io/token?service=registry.docker.io&scope=repository:library/{image_name}:pull"
+    res = urllib.request.urlopen(url)
+    res_json = json.loads(res.read().decode())
+    return res_json["token"]
+
+def get_manifest(token: str, image_name: str) -> dict:
+    manifest_url = (
+        f"https://registry.hub.docker.com/v2/library/{image_name}/manifests/latest"
+    )
     request = urllib.request.Request(
-        url,
+        manifest_url,
         headers={
             "Accept": "application/vnd.docker.distribution.manifest.v2+json",
             "Authorization": "Bearer " + token,
         },
     )
-    response = urllib.request.urlopen(request)
-    manifest = json.loads(response.read().decode('utf-8'))
-    return manifest
+    res = urllib.request.urlopen(request)
+    res_json = json.loads(res.read().decode())
+    return res_json
 
-
-
-def download_and_extract_layers(manifest, token):
-    headers={
+def pull_layers(image, token, layers):
+    dir_path = tempfile.mkdtemp()
+    for layer in layers:
+        url = f"https://registry.hub.docker.com/v2/library/{image}/blobs/{layer['digest']}"
+        sys.stderr.write(url)
+        request = urllib.request.Request(
+            url,
+            headers={
                 "Accept": "application/vnd.docker.distribution.manifest.v2+json",
                 "Authorization": "Bearer " + token,
-            }
-    print('manifest',manifest)
-    for layer in manifest['manifests']:
-        print('layer',layer)
-        url = 'https://registry-1.docker.io/v2/library/ubuntu/blobs/' + layer.get('digest')
-        request = urllib.request.Request(url, headers=headers)
-        try:
-            response = urllib.request.urlopen(request)
-        except urllib.error.HTTPError as e:
-            print(f"HTTPError for URL {url}: {e}")
-            continue
+            },
+        )
+        res = urllib.request.urlopen(request)
+        tmp_file = os.path.join(dir_path, "manifest.tar")
+        with open(tmp_file, "wb") as f:
+            shutil.copyfileobj(res, f)
+        with tarfile.open(tmp_file) as tar:
+            tar.extractall(dir_path)
+    os.remove(tmp_file)
+    return dir_path
 
-        with open('/jail/layer.tar', 'wb') as f:
-            f.write(response.read())
-        with tarfile.open('/jail/layer.tar') as tar:
-            tar.extractall('/jail')
-
-
-def run_command(command, args):
-    # create a temporary directory
-    os.system("mkdir -p /jail/usr/local/bin")
-    os.system("cp /usr/local/bin/docker-explorer /jail/usr/local/bin")
-    # copy /bin/sh to the chroot environment
-    os.system("mkdir -p /jail/bin")
-    os.system("cp /bin/sh /jail/bin")
-
-    os.chroot("/jail")
+def run_command(command, args, dir_path):
+    # chroot into temp dir
+    os.chroot(dir_path)
     libc = ctypes.cdll.LoadLibrary("libc.so.6")
+    # Unshare the PID namespace so parent a child processes have seperate namespaces
     libc.unshare(0x20000000)
-    completed_process = subprocess.run([command, *args], capture_output=True)
-    sys.stdout.write(completed_process.stdout.decode("utf-8"))
-    sys.stderr.write(completed_process.stderr.decode("utf-8"))
-    sys.exit(completed_process.returncode)
+    # Execute commands with args
+    parent_process = subprocess.Popen(
+        [command, *args], stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
+   
+    stdout, stderr = parent_process.communicate()
+    if stderr:
+        print(
+            stderr.decode("utf-8"), file=sys.stderr, end=""
+        )  # Set 'file=' to tell python to print output as stderr
+    if stdout:
+        print(stdout.decode("utf-8"), end="")
+    sys.exit(parent_process.returncode)
 
-
-def main():
+def main() -> int:
+    image = sys.argv[2]
     command = sys.argv[3]
-    args = sys.argv[4:] 
-    token = get_token()
-    manifest = get_manifest(token)
-    download_and_extract_layers(manifest, token)
-    run_command(command, args)
+    args = sys.argv[4:]
+    # 1. get token from Docker auth server by making GET req using image from args
+    token = get_token(image_name=image)
+    # 2. using the token from above get image manifest for specified image (from 'command') from Docker Hub
+    manifest = get_manifest(image_name=image, token=token)
+    # 3. Download layers from manifest file and put result a tarfile (call it manifest.tar)
+    dir_path = pull_layers(image, token, manifest["layers"])
+    run_command(command, args, dir_path)
 
 
    
