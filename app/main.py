@@ -7,11 +7,12 @@ import tempfile
 import ctypes
 import tarfile
 import urllib.request
-
+import json
 def get_token():
     url = 'https://auth.docker.io/token?service=registry.docker.io&scope=repository:library/ubuntu:pull'
-    response = urllib.request.urlopen(url)
-    return response.json()['token'] 
+    request = urllib.request.urlopen(url)
+    response = request.read().decode('utf-8')
+    return json.loads(response)['token']
 
 #fetch the image manifest
 def get_manifest(token):
