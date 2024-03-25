@@ -8,16 +8,16 @@ import ctypes
 import tarfile
 import urllib.request
 import json
+
+
 def get_token():
     url = 'https://auth.docker.io/token?service=registry.docker.io&scope=repository:library/ubuntu:pull'
-    request = urllib.request.urlopen(url)
-    response = request.read().decode('utf-8')
-    return json.loads(response)['token']
+    response = urllib.request.urlopen(url)
+    token = json.loads(response.read().decode())['token']
+    return token
 
-#fetch the image manifest
 def get_manifest(token):
     url = 'https://registry-1.docker.io/v2/library/ubuntu/manifests/latest'
-
     request = urllib.request.Request(
         url,
         headers={
@@ -25,8 +25,11 @@ def get_manifest(token):
             "Authorization": "Bearer " + token,
         },
     )
-    response = request.read().decode('utf-8')
-    return json.loads(response)
+    response = urllib.request.urlopen(request)
+    manifest = json.loads(response.read().decode('utf-8'))
+    return manifest
+
+
 
 def download_and_extract_layers(manifest, token):
     headers={
