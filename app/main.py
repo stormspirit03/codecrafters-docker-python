@@ -27,6 +27,7 @@ def get_manifest(token):
     )
     response = urllib.request.urlopen(request)
     manifest = json.loads(response.read().decode('utf-8'))
+    print('manifest ', manifest)
     return manifest
 
 
