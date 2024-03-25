@@ -57,6 +57,10 @@ def run_command(command, args):
     # create a temporary directory
     os.system("mkdir -p /jail/usr/local/bin")
     os.system("cp /usr/local/bin/docker-explorer /jail/usr/local/bin")
+    # copy /bin/sh to the chroot environment
+    os.system("mkdir -p /jail/bin")
+    os.system("cp /bin/sh /jail/bin")
+
     os.chroot("/jail")
     libc = ctypes.cdll.LoadLibrary("libc.so.6")
     libc.unshare(0x20000000)
