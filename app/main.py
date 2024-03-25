@@ -8,6 +8,7 @@ import ctypes
 import sys
 import os
 import subprocess
+import tempfile
 
 def get_os_name_and_arch() -> Tuple[str, str]:
     os_name = platform.system().lower()
