@@ -40,12 +40,15 @@ def download_and_extract_layers(manifest, token):
     for layer in manifest['manifests']:
         print('layer',layer)
         url = 'https://registry-1.docker.io/v2/library/ubuntu/blobs/' + layer.get('digest')
-        requset = urllib.request.Request(url, headers=headers)
-        response = urllib.request.urlopen(requset)
+        request = urllib.request.Request(url, headers=headers)
+        try:
+            response = urllib.request.urlopen(request)
+        except urllib.error.HTTPError as e:
+            print(f"HTTPError for URL {url}: {e}")
+            continue
 
         with open('/jail/layer.tar', 'wb') as f:
-            for chunk in response.iter_content(chunk_size=8192):
-                f.write(chunk)
+            f.write(response.read())
         with tarfile.open('/jail/layer.tar') as tar:
             tar.extractall('/jail')
 
