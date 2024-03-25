@@ -37,7 +37,7 @@ def download_and_extract_layers(manifest, token):
                 "Authorization": "Bearer " + token,
             }
     for layer in manifest:
-        url = 'https://registry-1.docker.io/v2/library/ubuntu/blobs/' + layer['digest']
+        url = 'https://registry-1.docker.io/v2/library/ubuntu/blobs/' + layer.get('digest')
         requset = urllib.request.Request(url, headers=headers)
         response = urllib.request.urlopen(requset)
 
