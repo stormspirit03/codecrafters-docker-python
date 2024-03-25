@@ -18,15 +18,15 @@ def get_token():
 def get_manifest(token):
     url = 'https://registry-1.docker.io/v2/library/ubuntu/manifests/latest'
 
-    request = urllib.request.urlopen(
+    request = urllib.request.Request(
         url,
         headers={
             "Accept": "application/vnd.docker.distribution.manifest.v2+json",
             "Authorization": "Bearer " + token,
         },
     )
-    response = urllib.request.urlopen(request)
-    return response.json()
+    response = request.read().decode('utf-8')
+    return json.loads(response)
 
 def download_and_extract_layers(manifest, token):
     headers={
